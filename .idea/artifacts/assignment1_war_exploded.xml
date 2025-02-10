@@ -1,0 +1,19 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="assignment1:war exploded">
+    <output-path>$PROJECT_DIR$/out/artifacts/assignment1_war_exploded</output-path>
+    <root id="root">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="assignment1" />
+        </element>
+        <element id="directory" name="lib">
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.15.0" />
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-core:2.15.0" />
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.15.0" />
+          <element id="library" level="project" name="Maven: org.json:json:20231013" />
+        </element>
+      </element>
+      <element id="javaee-facet-resources" facet="assignment1/web/Web" />
+    </root>
+  </artifact>
+</component>
