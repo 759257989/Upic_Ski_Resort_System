@@ -143,7 +143,7 @@ public class SendEventThread implements Runnable {
     private final static int HTTPCLIENT_TIMEOUT = 10;
     private final static int HTTPCLIENT_THREADS_SIZE = 100;
 
-    // 1️⃣ **创建一个全局 `HttpClient`**
+    //  **创建一个全局 `HttpClient`**
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)   // 使用 HTTP/1.1
             .connectTimeout(Duration.ofSeconds(HTTPCLIENT_TIMEOUT)) // 连接超时 10s

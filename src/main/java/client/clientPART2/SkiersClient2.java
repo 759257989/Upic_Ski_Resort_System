@@ -16,7 +16,7 @@ public class SkiersClient2 {
     private static final int INITIAL_THREAD_COUNT = 32;
     private static final int REQUESTS_PER_THREAD = 1000;
     private static final int THREAD_POOL_SIZE = 150;
-    private static final String SERVER_URL = "http://44.243.212.143:8080/assignment1_war";
+    private static final String SERVER_URL = "http://34.216.236.14:8080/assignment1_war";
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 
     private static final AtomicInteger successfulRequests = new AtomicInteger(0);
