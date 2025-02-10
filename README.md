@@ -16,7 +16,10 @@ Replace <your-ec2-ip> with the actual EC2 public IP.
 
 ## 2. Configure the Number of Events to Send
 By default, the total number of events sent to the server is 200,000. If you need to modify this, update:
+
+````
 private static final int TOTAL_EVENTS = 200000;
+````
 
 ## 3. Troubleshooting
 If the requests fail, verify the EC2 instance is running and the IP is correct.
