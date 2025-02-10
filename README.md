@@ -1,4 +1,4 @@
-Upic Ski Resort System 🚡🏔️
+## Upic Ski Resort System 🚡🏔️
 
 To run Client Version 1 (SkiersClient) or Client Version 2 (SkiersClient2), follow these steps:
 
