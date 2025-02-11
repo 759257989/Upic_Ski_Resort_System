@@ -145,27 +145,23 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@WebServlet(value = "/skiers/*", asyncSupported = true)
+@WebServlet(value = "/skiers/*", asyncSupported = true) // 允许异步处理
 public class SkierServlet extends HttpServlet {
-    private static final int THREAD_POOL_SIZE = 450; // Adjust based on server capacity
+    private static final int THREAD_POOL_SIZE = 200; // Adjust based on server capacity
     private static final ExecutorService requestExecutor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-    //asyncSupported = true 以启用异步处理，并在 doPost 中启动 AsyncContext。
+
 
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
-        // 开启异步处理
+        // 提交任务到线程池，而不是每次创建新线程
+        // 启用 AsyncContext 避免主线程结束后 response 被回收
         AsyncContext asyncContext = request.startAsync();
-        asyncContext.setTimeout(60000); // 可根据需要设置超时
-
         requestExecutor.submit(() -> {
             try {
-                // 使用 AsyncContext 中的 request 和 response 进行处理
-                SocketHandlerRunnable handler = new SocketHandlerRunnable(asyncContext);
-                handler.run();
-            } finally {
-                asyncContext.complete();
+                new SocketHandlerRunnable(asyncContext).run();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }

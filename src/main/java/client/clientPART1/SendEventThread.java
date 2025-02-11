@@ -116,14 +116,12 @@
 //}
 
 
-
 package client.clientPART1;
-
-//HttpClient版本避免重复创建，  改用 sendAsync() 让请求 异步执行
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import pojo.LiftRideEvent;
 
+import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -140,33 +138,48 @@ public class SendEventThread implements Runnable {
     private final AtomicInteger successfulRequests;
     private final AtomicInteger failedRequests;
     private final CountDownLatch latch;
-    private final static int HTTPCLIENT_TIMEOUT = 10;
-    private final static int HTTPCLIENT_THREADS_SIZE = 100;
+    private final CountDownLatch finalLatch;
+    private final int totalEvents;
 
-    //  **创建一个全局 `HttpClient`**
+    private static final int HTTPCLIENT_TIMEOUT = 10;
+    private static final int HTTPCLIENT_THREADS_SIZE = 100;
+    private static final int QUEUE_POLL_TIMEOUT = 2; // 单位：秒
+
+    // 使用全局 HttpClient 复用连接
     private static final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)   // 使用 HTTP/1.1
-            .connectTimeout(Duration.ofSeconds(HTTPCLIENT_TIMEOUT)) // 连接超时 10s
-            .executor(Executors.newFixedThreadPool(HTTPCLIENT_THREADS_SIZE)) // 使用 100 线程的线程池
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(HTTPCLIENT_TIMEOUT))
+            .executor(Executors.newFixedThreadPool(HTTPCLIENT_THREADS_SIZE))
             .build();
 
     public SendEventThread(BlockingQueue<LiftRideEvent> queue, String serverUrl, int sendAmount,
-                           AtomicInteger successfulRequests, AtomicInteger failedRequests, CountDownLatch latch) {
+                           AtomicInteger successfulRequests, AtomicInteger failedRequests,
+                           CountDownLatch latch, CountDownLatch finalLatch, int totalEvents) {
         this.queue = queue;
         this.serverUrl = serverUrl;
         this.requestsToSend = sendAmount;
         this.successfulRequests = successfulRequests;
         this.failedRequests = failedRequests;
         this.latch = latch;
+        this.finalLatch = finalLatch;
+        this.totalEvents = totalEvents;
     }
 
     @Override
     public void run() {
+        System.out.println(Thread.currentThread().getName() + " - Started sending requests...");
         BlockingQueue<LiftRideEvent> failedQueue = new LinkedBlockingQueue<>();
-        for (int i = 0; i < requestsToSend; i++) {
+        int processedRequests = 0; // 记录已处理请求数量
+
+        while (processedRequests < requestsToSend) { // 达到分配请求数后退出
             try {
-                LiftRideEvent event = queue.poll(10, TimeUnit.SECONDS);
-                if (event == null) continue;
+                System.out.println(Thread.currentThread().getName() + " - Checking queue...");
+                LiftRideEvent event = queue.poll(QUEUE_POLL_TIMEOUT, TimeUnit.SECONDS);
+                if (event == null) {
+                    System.out.println(Thread.currentThread().getName() + " - Queue empty, waiting...");
+                    Thread.sleep(500); // 队列为空时稍作等待
+                    continue;
+                }
 
                 boolean result = sendPostRequest(event);
                 if (result) {
@@ -175,12 +188,94 @@ public class SendEventThread implements Runnable {
                     failedRequests.incrementAndGet();
                     failedQueue.offer(event);
                 }
+
+                processedRequests++;
+                if (processedRequests % 100 == 0) {
+                    System.out.println(Thread.currentThread().getName() + " - Sent " + processedRequests + " requests...");
+                }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.err.println(Thread.currentThread().getName() + " - Interrupted: " + e.getMessage());
+                Thread.currentThread().interrupt();
             }
         }
 
-        // 处理失败请求
+        // 同步重试失败的请求
+        retryFailedRequests(failedQueue);
+
+        // 标记当前任务完成
+        if (latch != null) {
+            latch.countDown();
+        }
+        if (finalLatch != null) {
+            synchronized (finalLatch) {
+                if (finalLatch.getCount() > 0) {
+                    finalLatch.countDown();
+                }
+            }
+        }
+
+        System.out.println(Thread.currentThread().getName() + " - Completed. Success: " +
+                successfulRequests.get() + ", Failed: " + failedRequests.get());
+    }
+
+    /**
+     * 使用 HttpClient 发送 POST 请求
+     */
+    private boolean sendPostRequest(LiftRideEvent event) {
+        int retryTimes = 0;
+        long backoff = 100; // 初始退避时间（毫秒）
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        while (retryTimes < 5) { // 最多重试 5 次
+            try {
+                String jsonBody = objectMapper.writeValueAsString(Map.of(
+                        "time", event.getTime(),
+                        "liftID", event.getLiftID()
+                ));
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(serverUrl + "/skiers/" + event.getResortID()
+                                + "/seasons/" + event.getSeasonID()
+                                + "/days/" + event.getDayID()
+                                + "/skiers/" + event.getSkierID()))
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofSeconds(5))
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == HttpServletResponse.SC_CREATED) {
+                    System.out.println(Thread.currentThread().getName() + " - Request successful!");
+                    return true;
+                } else {
+                    System.out.println(Thread.currentThread().getName() + " - Retry " + (retryTimes + 1) +
+                            ", Response Code: " + response.statusCode());
+                    retryTimes++;
+                    Thread.sleep(backoff);
+                    backoff *= 2;
+                }
+            } catch (Exception e) {
+                System.err.println(Thread.currentThread().getName() + " - Exception during request: " + e.getMessage());
+                retryTimes++;
+                try {
+                    Thread.sleep(backoff);
+                    backoff *= 2;
+                } catch (InterruptedException ex) {
+                    System.err.println(Thread.currentThread().getName() +
+                            " - Interrupted during retry wait: " + ex.getMessage());
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        System.out.println(Thread.currentThread().getName() + " - Request failed after 5 retries.");
+        return false;
+    }
+
+    /**
+     * 同步重试失败的请求
+     */
+    private void retryFailedRequests(BlockingQueue<LiftRideEvent> failedQueue) {
         while (!failedQueue.isEmpty()) {
             LiftRideEvent failedEvent = failedQueue.poll();
             if (failedEvent != null) {
@@ -191,65 +286,6 @@ public class SendEventThread implements Runnable {
                 }
             }
         }
-
-        if (latch != null) {
-            latch.countDown();
-        }
-    }
-
-    /**
-     * **使用 `HttpClient` 发送 POST 请求**
-     */
-    private boolean sendPostRequest(LiftRideEvent event) {
-        int retryTimes = 0;
-        long backoff = 250;  // 初始退避时间 500ms
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        while (retryTimes < 5) { // 最多重试 5 次
-            try {
-                String jsonBody = objectMapper.writeValueAsString(Map.of(
-                        "time", event.getTime(),
-                        "liftID", event.getLiftID()
-                ));
-
-                //  **使用 `HttpRequest` 构造 JSON 请求**
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(serverUrl + "/skiers/" + event.getResortID()
-                                + "/seasons/" + event.getSeasonID()
-                                + "/days/" + event.getDayID()
-                                + "/skiers/" + event.getSkierID()))
-                        .header("Content-Type", "application/json")
-                        .timeout(Duration.ofSeconds(5))  // 请求超时 5s
-                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                        .build();
-
-                //  **发送异步请求**
-                CompletableFuture<HttpResponse<String>> responseFuture =
-                        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-
-                //  **获取异步结果（带超时）**
-                HttpResponse<String> response = responseFuture.get(5, TimeUnit.SECONDS);
-
-                //  **检查 HTTP 状态码**
-                if (response.statusCode() == 201) {
-                    return true;
-                } else {
-                    System.out.println("Retrying... Attempt " + (retryTimes + 1) + " Response Code: " + response.statusCode());
-                    retryTimes++;
-                    Thread.sleep(backoff);
-                    backoff *= 2; // 指数退避
-                }
-            } catch (Exception e) {
-                System.out.println("Exception during request: " + e.getMessage());
-                retryTimes++;
-                try {
-                    Thread.sleep(backoff);
-                    backoff *= 2;
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }
-        return false;
     }
 }
+
