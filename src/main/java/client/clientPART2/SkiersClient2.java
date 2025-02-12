@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SkiersClient2 {
     // Total number of events (200,000 plus a few extras to test remainder handling)
-    private static final int TOTAL_EVENTS = 200018;
+    private static final int TOTAL_EVENTS = 200000;
     // First phase: 32 tasks, each processing 1000 events
     private static final int INITIAL_THREAD_COUNT = 32;
     // Number of requests per task (phase one fixed to 1000; phase two may handle a remainder)
@@ -19,7 +19,7 @@ public class SkiersClient2 {
     // Maximum number of threads concurrently running
     private static final int THREAD_POOL_SIZE = 150;
     // Server URL
-    private static final String SERVER_URL = "http://34.213.76.93:8080/assignment1_war";
+    private static final String SERVER_URL = "http://34.212.106.75:8080/assignment1_war";
     // Queue size equals total events
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 
@@ -101,8 +101,7 @@ public class SkiersClient2 {
             System.out.println("Waiting for all tasks interrupted: " + e.getMessage());
         }
 
-        // Record end time.
-        long endTime = System.nanoTime();
+
 
         // Shutdown executor.
         executor.shutdown();
@@ -114,6 +113,8 @@ public class SkiersClient2 {
         } catch (InterruptedException e) {
             System.out.println("Thread pool termination interrupted: " + e.getMessage());
         }
+        // Record end time.
+        long endTime = System.nanoTime();
 
         long totalTimeInSeconds = (endTime - startTime) / 1_000_000_000;
         System.out.println("Remaining events in queue: " + eventQueue.size());
@@ -150,8 +151,18 @@ public class SkiersClient2 {
         } else {
             median = latencies.get(size / 2);
         }
-        long min = latencies.get(0);
-        long max = latencies.get(latencies.size() - 1);
+        // max and min latency
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (LatencyRecord r : latencyRecords) {
+            long lat = r.getLatencyMillis();
+            if(lat < min) {
+                min = lat;
+            }
+            if(lat > max) {
+                max = lat;
+            }
+        }
         int p99Index = (int) Math.ceil(0.99 * latencies.size()) - 1;
         long p99 = latencies.get(p99Index);
 
@@ -164,7 +175,7 @@ public class SkiersClient2 {
         System.out.println("Total latency records: " + sortedRecords.size());
 
         // --- Write latency records to CSV, sorted by relative start time.
-        // Here, we compute the relative start time = record.getStartTimeMillis() - experimentStartTime.
+        // compute the relative start time = record.getStartTimeMillis() - experimentStartTime.
         String csvFile = "client_part2_latency.csv";
         try (PrintWriter pw = new PrintWriter(new File(csvFile))) {
             // CSV header.

@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SkiersClient {
     // 总事件数 200,000
-    private static final int TOTAL_EVENTS = 200018;
+    private static final int TOTAL_EVENTS = 200000;
     // 第一阶段任务数量：32 个，每个任务处理 1000 个事件
     private static final int INITIAL_THREAD_COUNT = 32;
     // 每个任务处理的事件数（第一阶段固定为 1000，第二阶段可能为最后一批不足 1000）
@@ -15,7 +15,7 @@ public class SkiersClient {
     // 线程池最大并发线程数（不影响任务总数，只影响同时执行的任务数）
     private static final int THREAD_POOL_SIZE = 150;
     // 服务地址
-    private static final String SERVER_URL = "http://34.213.76.93:8080/assignment1_war";
+    private static final String SERVER_URL = "http://34.212.106.75:8080/assignment1_war";
     // 队列大小与总事件数一致
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 
@@ -94,8 +94,7 @@ public class SkiersClient {
             System.out.println("Waiting for all tasks interrupted: " + e.getMessage());
         }
 
-        // 记录结束时间
-        long endTime = System.nanoTime();
+
 
         // 关闭线程池
         executor.shutdown();
@@ -107,6 +106,8 @@ public class SkiersClient {
         } catch (InterruptedException e) {
             System.out.println("Thread pool termination interrupted: " + e.getMessage());
         }
+        // 记录结束时间
+        long endTime = System.nanoTime();
 
         // 计算总执行时间（单位：秒）
         long totalTimeInSeconds = (endTime - startTime) / 1_000_000_000;
@@ -130,3 +131,6 @@ public class SkiersClient {
         System.exit(0);
     }
 }
+
+
+

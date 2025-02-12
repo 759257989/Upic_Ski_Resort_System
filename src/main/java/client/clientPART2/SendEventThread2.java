@@ -49,13 +49,14 @@ public class SendEventThread2 implements Runnable {
 
     @Override
     public void run() {
-        System.out.println(Thread.currentThread().getName() + " - Started sending requests...");
+        //System.out.println(Thread.currentThread().getName() + " - Started sending requests...");
         BlockingQueue<LiftRideEvent> failedQueue = new LinkedBlockingQueue<>();
         int processedRequests = 0; // Number of processed requests
 
         while (processedRequests < requestsToSend) {
             try {
-                System.out.println(Thread.currentThread().getName() + " - Checking queue...");
+                // every event is processed once
+                //System.out.println(Thread.currentThread().getName() + " - Checking queue...");
                 LiftRideEvent event = queue.poll(QUEUE_POLL_TIMEOUT, TimeUnit.SECONDS);
                 if (event == null) {
                     System.out.println(Thread.currentThread().getName() + " - Queue empty, waiting...");
@@ -68,11 +69,12 @@ public class SendEventThread2 implements Runnable {
                     successfulRequests.incrementAndGet();
                 } else {
                     failedRequests.incrementAndGet();
-                    failedQueue.offer(event);
+                    System.out.println("Failed: " + failedRequests.get());
+                    //failedQueue.offer(event);
                 }
                 processedRequests++;
                 if (processedRequests % 100 == 0) {
-                    System.out.println(Thread.currentThread().getName() + " - Sent " + processedRequests + " requests...");
+                    //System.out.println(Thread.currentThread().getName() + " - Sent " + processedRequests + " requests...");
                 }
             } catch (InterruptedException e) {
                 System.err.println(Thread.currentThread().getName() + " - Interrupted: " + e.getMessage());
@@ -81,7 +83,8 @@ public class SendEventThread2 implements Runnable {
         }
 
         // Synchronously retry any failed requests.
-        retryFailedRequests(failedQueue);
+        // after all events processed, retry the failed requests during while loop
+//        retryFailedRequests(failedQueue);
 
         // Mark task as completed.
         if (latch != null) {
@@ -91,8 +94,7 @@ public class SendEventThread2 implements Runnable {
             finalLatch.countDown();
         }
 
-        System.out.println(Thread.currentThread().getName() + " - Completed. Success: " +
-                successfulRequests.get() + ", Failed: " + failedRequests.get());
+        //System.out.println(Thread.currentThread().getName() + " - Completed. Success: " + successfulRequests.get() + ", Failed: " + failedRequests.get());
     }
 
     /**
@@ -100,7 +102,7 @@ public class SendEventThread2 implements Runnable {
      */
     private boolean sendPostRequest(LiftRideEvent event) {
         int retryTimes = 0;
-        long backoff = 100; // initial backoff in ms
+        long backoff = 10; // initial backoff in ms 100
         ObjectMapper objectMapper = new ObjectMapper();
 
         while (retryTimes < 5) {
@@ -132,7 +134,7 @@ public class SendEventThread2 implements Runnable {
                 SkiersClient2.latencyRecords.add(new LatencyRecord(requestStartMillis, "POST", latencyMillis, response.statusCode()));
 
                 if (response.statusCode() == HttpServletResponse.SC_CREATED) {
-                    System.out.println(Thread.currentThread().getName() + " - Request successful!");
+                    //System.out.println(Thread.currentThread().getName() + " - Request successful!");
                     return true;
                 } else {
                     System.out.println(Thread.currentThread().getName() + " - Retry " + (retryTimes + 1) +

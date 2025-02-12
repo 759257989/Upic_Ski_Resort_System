@@ -13,7 +13,7 @@ public class SkiersClientTest {
     // 每个任务（此处仅有1个任务）处理 1000 个请求
     private static final int REQUESTS_PER_THREAD = 1000;
     // 服务地址
-    private static final String SERVER_URL = "http://34.213.76.93:8080/assignment1_war";
+    private static final String SERVER_URL = "http://34.212.106.75:8080/assignment1_war";
     // 队列大小与总事件数一致
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 
