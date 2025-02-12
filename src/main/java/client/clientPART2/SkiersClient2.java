@@ -176,7 +176,7 @@ public class SkiersClient2 {
 
         // --- Write latency records to CSV, sorted by relative start time.
         // compute the relative start time = record.getStartTimeMillis() - experimentStartTime.
-        String csvFile = "client_part2_latency.csv";
+        String csvFile = "client_part2.csv";
         try (PrintWriter pw = new PrintWriter(new File(csvFile))) {
             // CSV header.
             pw.println("relativeStartMillis,requestType,latencyMillis,responseCode");
