@@ -5,6 +5,12 @@ To run Client Version 1 (SkiersClient) or Client Version 2 (SkiersClient2), foll
 ## 1. Update the EC2 Server IP Address
 Before running the client, update the EC2 instance IP address in the corresponding client file.
 
+The SkiersClient.java files are located in this directory
+
+````
+src/main/java/client
+````
+
 Open SkiersClient.java or SkiersClient2.java
 Locate the following variable:
 
