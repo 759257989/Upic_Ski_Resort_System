@@ -21,7 +21,14 @@ By default, the total number of events sent to the server is 200,000. If you nee
 private static final int TOTAL_EVENTS = 200000;
 ````
 
-## 3. Troubleshooting
+## 3. WAR file 
+The WAR file is located in the **out** directory. Please upload it to the Tomcat webapps directory on your EC2 instance.
+````
+out/artifacts/assignment1_war_exploded
+out/artifacts/assignment1_war
+````
+
+## 4. Troubleshooting
 If the requests fail, verify the EC2 instance is running and the IP is correct.
 Ensure the server is listening on port 8080.
 If you experience high failure rates, consider reducing TOTAL_EVENTS
