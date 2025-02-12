@@ -11,13 +11,13 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+//AsyncContext
 
 public class SocketHandlerRunnable implements Runnable {
     private static final Pattern NUMERIC_PATTERN = Pattern.compile("\\d+");
     private static final int INVALID_NUMERIC_PARAM = -11111;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final AsyncContext asyncContext; //通过 AsyncContext 获取 request/response 进行处理。
+    private final AsyncContext asyncContext;
 
     public SocketHandlerRunnable(AsyncContext asyncContext) {
         this.asyncContext = asyncContext;
@@ -25,13 +25,15 @@ public class SocketHandlerRunnable implements Runnable {
 
     @Override
     public void run() {
-        // 从 AsyncContext 中获取 request 和 response
         HttpServletRequest request = (HttpServletRequest) asyncContext.getRequest();
         HttpServletResponse response = (HttpServletResponse) asyncContext.getResponse();
+
         try {
             processRequest(request, response);
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            asyncContext.complete(); // **确保请求完成，释放资源**
         }
     }
 
@@ -56,6 +58,7 @@ public class SocketHandlerRunnable implements Runnable {
         int skierID = validIntegerParam(urlParts[7], "skierID", response);
 
         if (resortID == INVALID_NUMERIC_PARAM || seasonID == null || dayID == null || skierID == INVALID_NUMERIC_PARAM) {
+            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid parameters: Check resortID, seasonID, dayID, skierID");
             return;
         }
 
@@ -66,7 +69,7 @@ public class SocketHandlerRunnable implements Runnable {
             return;
         }
 
-        //，返回 dummy 数据
+        // 返回 201 Created
         sendResponse(response, HttpServletResponse.SC_CREATED, "Received request");
     }
 
@@ -105,6 +108,10 @@ public class SocketHandlerRunnable implements Runnable {
     }
 
     private void sendResponse(HttpServletResponse response, int code, String message) throws IOException {
+        if (response.isCommitted()) {
+            System.out.println("Response already committed, skipping: " + message);
+            return;
+        }
         response.setStatus(code);
         ResponseMessage responseMessage = new ResponseMessage(message);
         String jsonResponse = objectMapper.writeValueAsString(responseMessage);
