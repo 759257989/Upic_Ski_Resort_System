@@ -42,14 +42,9 @@ public class SkiersClientTest {
 
         // 提交任务，使用 SendEventThread 发送 1000 个请求
         executor.submit(new SendEventThread(
-                eventQueue,
-                SERVER_URL,
-                REQUESTS_PER_THREAD,
-                successfulRequests,
-                failedRequests,
-                null,  // 不需要初始阶段的 CountDownLatch
-                latch,
-                TOTAL_EVENTS
+                eventQueue, SERVER_URL, 1000,
+                successfulRequests, failedRequests, null, null, TOTAL_EVENTS,
+                false, null
         ));
 
         // 等待该任务完成
