@@ -1,5 +1,8 @@
 package Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import dto.LiftRideDto;
 import dto.ResponseMessage;
 
@@ -8,7 +11,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
 import java.util.regex.Pattern;
 
 //AsyncContext
@@ -18,9 +23,14 @@ public class SocketHandlerRunnable implements Runnable {
     private static final int INVALID_NUMERIC_PARAM = -11111;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final AsyncContext asyncContext;
+    private final BlockingQueue<Channel> channelPool;
+    private static final String QUEUE_NAME = "skiQueue";
 
-    public SocketHandlerRunnable(AsyncContext asyncContext) {
+
+
+    public SocketHandlerRunnable(AsyncContext asyncContext, BlockingQueue<Channel> channelPool) {
         this.asyncContext = asyncContext;
+        this.channelPool = channelPool;
     }
 
     @Override
@@ -29,14 +39,21 @@ public class SocketHandlerRunnable implements Runnable {
         HttpServletResponse response = (HttpServletResponse) asyncContext.getResponse();
 
         try {
+            // valid parameters
             processRequest(request, response);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            asyncContext.complete(); // **确保请求完成，释放资源**
+            asyncContext.complete(); //  complete task, and release resource at end
         }
     }
 
+    /**
+     * verify the url and parameters valid
+     * @param request
+     * @param response
+     * @throws IOException
+     */
     private void processRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json");
         String urlPath = request.getPathInfo();
@@ -51,7 +68,7 @@ public class SocketHandlerRunnable implements Runnable {
             return;
         }
 
-        // 提取并校验参数
+        // valid parameters
         int resortID = validIntegerParam(urlParts[1], "resortID", response);
         String seasonID = validStringParam(urlParts[3], "seasonID", response);
         String dayID = validStringParam(urlParts[5], "dayID", response);
@@ -62,16 +79,69 @@ public class SocketHandlerRunnable implements Runnable {
             return;
         }
 
-        // 解析请求体
+        // parse request body data
         LiftRideDto liftRideDto = parseRequestBody(request, response);
         if (liftRideDto == null) {
             sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid request body");
             return;
         }
 
-        // 返回 201 Created
+        // liftrideDTO
+        liftRideDto.setResortID(resortID);
+        liftRideDto.setSeasonID(seasonID);
+        liftRideDto.setDayID(dayID);
+        liftRideDto.setSkierID(skierID);
+
+        // send to rabbitmq
+        sendMessageToQueue(objectMapper.writeValueAsString(liftRideDto), response);
+
+        // return 201 Created
         sendResponse(response, HttpServletResponse.SC_CREATED, "Received request");
     }
+
+    /**
+     * send message to rabbitmq
+     * @param message
+     * @param response
+     * @throws IOException
+     */
+    private void sendMessageToQueue(String message, HttpServletResponse response) throws IOException {
+        Channel channel = null;
+        try {
+            // get a Channel from pool
+            channel = channelPool.take();
+
+            // check if the queue exists
+            AMQP.Queue.DeclareOk queueStatus = channel.queueDeclarePassive(QUEUE_NAME);
+            int queueSize = queueStatus.getMessageCount();
+            final int MAX_QUEUE_THRESHOLD = 1500; // max queue size
+
+            // slow down if too many in the queue
+            if (queueSize > MAX_QUEUE_THRESHOLD) {
+                System.err.println("️ Queue size too high (" + queueSize + "), slowing down production...");
+                sendResponse(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Server is busy, try again later.");
+                return;
+            }
+
+            // publish message
+            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
+            System.out.println("Sent to queue: " + message);
+
+        } catch (Exception e) {
+            System.err.println(" IOException occurred: " + e.getMessage());
+            sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "IOException occurred while sending message.");
+        } finally {
+            // return channel to pool
+            if (channel != null) {
+                if (channel.isOpen()) {
+                    channelPool.offer(channel);
+                } else {
+                    System.err.println("Channel is closed, not returning to pool.");
+                }
+            }
+        }
+    }
+
 
     private LiftRideDto parseRequestBody(HttpServletRequest request, HttpServletResponse response) throws IOException {
         try (BufferedReader reader = request.getReader()) {

@@ -146,13 +146,16 @@ public class SkiersClient {
     // Total events: 200,000
     private static final int TOTAL_EVENTS = 200000;
     // First-phase tasks: 32 tasks, each processing 1000 events
+//    private static final int INITIAL_THREAD_COUNT = 32;
     private static final int INITIAL_THREAD_COUNT = 32;
     // Requests per thread
     private static final int REQUESTS_PER_THREAD = 1000;
     // Maximum concurrent threads in the thread pool
     private static final int THREAD_POOL_SIZE = 150;
     // Server URL
-    private static final String SERVER_URL = "http://35.89.134.176:8080/assignment1_war";
+//    private static final String SERVER_URL = "http://34.221.211.187:8080/assignment1_war";
+//    private static final String SERVER_URL = "http://localhost:8080/assignment1_war_exploded";
+    private static final String SERVER_URL = "http://Sevlet-ALB-1615193705.us-west-2.elb.amazonaws.com/assignment1_war";
     // Queue size equals total events
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 

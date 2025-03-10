@@ -218,7 +218,8 @@ public class SkiersClient2 {
     // 最大并发线程数
     private static final int THREAD_POOL_SIZE = 150;
     // 服务器 URL
-    private static final String SERVER_URL = "http://35.89.134.176:8080/assignment1_war";
+//    private static final String SERVER_URL = "http://35.89.134.176:8080/assignment1_war";
+    private static final String SERVER_URL = "http://Sevlet-ALB-1615193705.us-west-2.elb.amazonaws.com/assignment1_war";
     // 事件队列大小
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
 
