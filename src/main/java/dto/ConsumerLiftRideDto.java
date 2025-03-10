@@ -1,7 +1,7 @@
 package dto;
 
 // DTO for LiftRide
-public class LiftRideDto {
+public class ConsumerLiftRideDto {
     private int liftID;
     private int time;
     private int resortID;
@@ -10,9 +10,9 @@ public class LiftRideDto {
     private int skierID;
 
     // Default constructor (important for JSON serialization)
-    public LiftRideDto() {}
+    public ConsumerLiftRideDto() {}
     // Constructor with fields
-    public LiftRideDto(Integer liftID, Integer time, int resortID, String seasonID, String dayID, int skierID) {
+    public ConsumerLiftRideDto(Integer liftID, Integer time, int resortID, String seasonID, String dayID, int skierID) {
         this.liftID = liftID;
         this.time = time;
         this.resortID = resortID;
@@ -56,6 +56,11 @@ public class LiftRideDto {
 
     public void setSkierID(int skierID) {
         this.skierID = skierID;
+    }
+
+    @Override
+    public String toString() {
+        return "ConsumerLiftRideDto [liftID=" + liftID + ", time=" + time;
     }
 }
 

@@ -11,6 +11,8 @@
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-core:2.15.0" />
           <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.15.0" />
           <element id="library" level="project" name="Maven: org.json:json:20231013" />
+          <element id="library" level="project" name="Maven: com.rabbitmq:amqp-client:5.25.0" />
+          <element id="library" level="project" name="Maven: org.slf4j:slf4j-api:1.7.36" />
         </element>
       </element>
       <element id="javaee-facet-resources" facet="assignment1/web/Web" />
