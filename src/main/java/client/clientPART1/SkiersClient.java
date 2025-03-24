@@ -144,7 +144,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SkiersClient {
     // Total events: 200,000
-    private static final int TOTAL_EVENTS = 200000;
+    private static final int TOTAL_EVENTS = 40000;
     // First-phase tasks: 32 tasks, each processing 1000 events
 //    private static final int INITIAL_THREAD_COUNT = 32;
     private static final int INITIAL_THREAD_COUNT = 32;

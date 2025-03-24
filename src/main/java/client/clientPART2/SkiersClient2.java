@@ -216,9 +216,9 @@ public class SkiersClient2 {
     // 每个任务的请求数
     private static final int REQUESTS_PER_THREAD = 1000;
     // 最大并发线程数
-    private static final int THREAD_POOL_SIZE = 150;
+    private static final int THREAD_POOL_SIZE = 200;
     // 服务器 URL
-//    private static final String SERVER_URL = "http://35.89.134.176:8080/assignment1_war";
+//    private static final String SERVER_URL = "http://52.25.105.52:8080/assignment1_war";
     private static final String SERVER_URL = "http://Sevlet-ALB-1615193705.us-west-2.elb.amazonaws.com/assignment1_war";
     // 事件队列大小
     private static final int QUEUE_SIZE = TOTAL_EVENTS;
@@ -323,19 +323,25 @@ public class SkiersClient2 {
         System.out.println("Successful requests: " + successfulRequests.get());
         System.out.println("Failed requests: " + failedRequests.get());
 
-        //latency calculation
-        List<LatencyRecord> sortedRecords = new ArrayList<>(latencyRecords);
-        sortedRecords.sort(Comparator.comparingLong(LatencyRecord::getStartTimeMillis));
+        // 1. Sort latency records by start time for CSV export.
+        List<LatencyRecord> sortedRecordsByStartTime = new ArrayList<>(latencyRecords);
+        sortedRecordsByStartTime.sort(Comparator.comparingLong(LatencyRecord::getStartTimeMillis));
 
+// 2. Extract latency values and sort for statistical analysis.
         List<Long> latencies = new ArrayList<>();
-        for (LatencyRecord r : sortedRecords) {
-            latencies.add(r.getLatencyMillis());
+        for (LatencyRecord record : latencyRecords) {
+            latencies.add(record.getLatencyMillis());
         }
+        Collections.sort(latencies); // Sort by latency values
+
+// 3. Calculate mean latency.
         double sum = 0;
-        for (long lat : latencies) {
-            sum += lat;
+        for (long latency : latencies) {
+            sum += latency;
         }
         double mean = sum / latencies.size();
+
+// 4. Calculate median latency.
         long median;
         int size = latencies.size();
         if (size % 2 == 0) {
@@ -343,33 +349,29 @@ public class SkiersClient2 {
         } else {
             median = latencies.get(size / 2);
         }
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (LatencyRecord r : latencyRecords) {
-            long lat = r.getLatencyMillis();
-            if (lat < min) {
-                min = lat;
-            }
-            if (lat > max) {
-                max = lat;
-            }
-        }
+
+// 5. Calculate min and max latency.
+        long min = latencies.get(0);
+        long max = latencies.get(latencies.size() - 1);
+
+// 6. Calculate 99th percentile latency.
         int p99Index = (int) Math.ceil(0.99 * latencies.size()) - 1;
         long p99 = latencies.get(p99Index);
 
+// 7. Print performance metrics.
         System.out.println("Performance metrics (latency in ms):");
         System.out.printf("Mean response time: %.2f ms\n", mean);
         System.out.println("Median response time: " + median + " ms");
         System.out.println("Min response time: " + min + " ms");
         System.out.println("Max response time: " + max + " ms");
         System.out.println("99th percentile response time: " + p99 + " ms");
-        System.out.println("Total latency records: " + sortedRecords.size());
+        System.out.println("Total latency records: " + latencies.size());
 
-        // --- 将延时记录写入 CSV 文件 ---
+// --- Write latency records to CSV, sorted by relative start time ---
         String csvFile = "client_part2.csv";
         try (PrintWriter pw = new PrintWriter(new File(csvFile))) {
             pw.println("relativeStartMillis,requestType,latencyMillis,responseCode");
-            for (LatencyRecord record : sortedRecords) {
+            for (LatencyRecord record : sortedRecordsByStartTime) {
                 long relativeStart = record.getStartTimeMillis() - experimentStartTime;
                 pw.println(relativeStart + "," + record.getRequestType() + "," +
                         record.getLatencyMillis() + "," + record.getResponseCode());
