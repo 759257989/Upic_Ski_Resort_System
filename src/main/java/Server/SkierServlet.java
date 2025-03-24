@@ -161,7 +161,7 @@ public class SkierServlet extends HttpServlet {
 //    private static final String RABBITMQ_ADDRESS = "localhost";
     private static final String RABBITMQ_ADDRESS = "52.25.147.184";
     private static BlockingQueue<Channel> channelPool;
-    private static final int CHANNEL_POOL_SIZE = 20;  // create 20 个 Channel
+    private static final int CHANNEL_POOL_SIZE = 100;  // create 20 个 Channel
     private static final String QUEUE_NAME = "skiQueue";
 
     private static ConnectionFactory factory;

@@ -275,7 +275,7 @@ public class SendEventThread2 implements Runnable {
      */
     private boolean sendPostRequest(LiftRideEvent event) {
         int retryTimes = 0;
-        long backoff = 30; // 初始退避时间（毫秒）
+        long backoff = 50; // 初始退避时间（毫秒）
         ObjectMapper objectMapper = new ObjectMapper();
 
         while (retryTimes < 5) {
